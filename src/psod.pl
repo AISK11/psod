@@ -6,13 +6,43 @@ no v6.0.0;
 
 ## Modules (@INC).
 use Getopt::Long 'GetOptions';
+use Path::Tiny 'path';
 
 ## Settings.
 my $VERSION = 'v0.0.0';
 
 
 sub obfuscate($input, $output) {
-    say('obfuscating...');
+    my $content = path($input)->slurp;
+
+    ## Remove comments.
+    $content =~ s/<#.*?#>//gs;
+    $content =~ s/#.*\n//g;
+
+    ## Remove space-like charactes.
+    {
+        ## Remove empty lines.
+        $content =~ s/^\s*\n//gm;
+
+        ## Remove leading and trailing space-like characters.
+        $content =~ s/^\s*//gm;
+        $content =~ s/\s*$//gm;
+
+        ## Replace new lines with semicolon.
+        $content =~ s/\n/;/g;
+
+        ## Remove redundant space-like characters.
+        $content =~ s/\s+/ /g;
+
+        ## Remove unnecessary semicolons.
+        $content =~ s/{;/{/g;
+        $content =~ s/;}/}/g;
+
+        ## Remove unnecessary space-like characters.
+        $content =~ s/\s=/=/g;
+        $content =~ s/=\s/=/g;
+        $content =~ s/,\s/,/g;
+    }
 }
 
 
