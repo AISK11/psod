@@ -15,34 +15,57 @@ my $VERSION = 'v0.0.0';
 sub obfuscate($input, $output) {
     my $content = path($input)->slurp;
 
-    ## Remove comments.
-    $content =~ s/<#.*?#>//gs;
-    $content =~ s/#.*\n//g;
 
-    ## Remove space-like charactes.
-    {
+    sub remove_comments($content) {
+        $content =~ s/<#.*?#>//gs; ## '<#...#>' -> ''
+        $content =~ s/#.*\n//g;    ## '#...'    -> ''
+        return $content;
+    }
+
+
+    sub remove_spacelikes($content) {
         ## Remove empty lines.
-        $content =~ s/^\s*\n//gm;
+        $content =~ s/^\s*\n//gm; ## '^$' -> ''
 
         ## Remove leading and trailing space-like characters.
-        $content =~ s/^\s*//gm;
-        $content =~ s/\s*$//gm;
+        $content =~ s/^\s*//gm; ## ' ...' -> '...'
+        $content =~ s/\s*$//gm; ## '... ' -> '...'
 
-        ## Replace new lines with semicolon.
-        $content =~ s/\n/;/g;
+        ## Replace new lines with semicolons.
+        $content =~ s/\n/;/g; ## '\n' -> ';'
 
         ## Remove redundant space-like characters.
-        $content =~ s/\s+/ /g;
+        $content =~ s/\s+/ /g; ## '  ' -> ' '
 
         ## Remove unnecessary semicolons.
-        $content =~ s/{;/{/g;
-        $content =~ s/;}/}/g;
+        $content =~ s/{;/{/g; ## '{;' -> '{'
+        $content =~ s/;}/}/g; ## ';}' -> '}'
 
         ## Remove unnecessary space-like characters.
-        $content =~ s/\s=/=/g;
-        $content =~ s/=\s/=/g;
-        $content =~ s/,\s/,/g;
+        $content =~ s/\s=/=/g;   ## ' =' -> '='
+        $content =~ s/=\s/=/g;   ## '= ' -> '='
+        $content =~ s/\s\+/\+/g; ## ' +' -> '+'
+        $content =~ s/\+\s/\+/g; ## '+ ' -> '+'
+        $content =~ s/\s,/,/g;   ## ' ,' -> ','
+        $content =~ s/,\s/,/g;   ## ', ' -> ','
+        $content =~ s/\s\|/\|/g; ## ' |' -> '|'
+        $content =~ s/\|\s/\|/g; ## '| ' -> '|'
+        $content =~ s/\s\{/\{/g; ## ' {' -> '{'
+        $content =~ s/\{\s/\{/g; ## '{ ' -> '{'
+        $content =~ s/\s\}/\}/g; ## ' }' -> '}'
+        $content =~ s/\}\s/\}/g; ## '} ' -> '}'
+        $content =~ s/\s\(/\(/g; ## ' )' -> '('
+        $content =~ s/\(\s/\(/g; ## '( ' -> '('
+        $content =~ s/\s\)/\)/g; ## ' )' -> ')'
+        $content =~ s/\)\s/\)/g; ## ') ' -> ')'
+        return $content;
     }
+
+    $content = remove_comments($content);
+    $content = remove_spacelikes($content);
+
+    ############################################################################
+    print($content);
 }
 
 
