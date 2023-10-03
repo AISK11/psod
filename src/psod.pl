@@ -5,8 +5,10 @@ use v5.35.0;
 no v6.0.0;
 
 ## Modules (@INC).
-use Getopt::Long 'GetOptions';
-use Path::Tiny 'path';
+use Getopt::Long ('GetOptions');
+use Path::Tiny ('path');
+use MIME::Base64 ('encode_base64');
+use Compress::Zlib ('compress');
 
 ## Settings.
 my $VERSION = 'v0.0.0';
@@ -206,56 +208,53 @@ sub obfuscate($input, $output) {
         return $randomized_content;
     }
 
+    sub encode($content) {
+        ## UTF-16LE encoding.
+        my $encoded_content = '';
+        for my $c (split //, $content) {
+            $encoded_content .= $c . "\0";
+        }
 
+        ## Base64 encoding.
+        $encoded_content = encode_base64($encoded_content);
+        $encoded_content =~ s/\s//g;
+        return $encoded_content;
+    }
 
-
-
-    #sub x($content) {
+    sub concatenate_strings($content) {
         ## Find all quotations ('.*' and ".*").
-        #my @quotations = ();
-        #while ($content =~ /(['"].*?['"])/g) {
-            #push @quotations, $1;
-            #}
+        my @quotations = ();
+        while ($content =~ /(['"].*?['"])/g) {
+            push @quotations, $1;
+        }
 
+        foreach my $quotation (@quotations) {
+            ## Check if quotation is single-quoted or double-quoted.
+            my $is_single = 1;
+            if (substr($quotation, 0, 1) eq '"') {
+                $is_single = 0;
+            }
 
-        #        foreach my $quotation (@quotations) {
-            #            if (substr($quotation, 0, 1) eq '"') {
-                #                $quotation =~ s/"//g;
-                #            } else {
-                #                $quotation =~ s/'//g;
-                #            }
-            #
-            #            my $new_quotation = '';
-            #            for my $c (split //, $quotation) {
-                #                if ($c ne '\'' && $c ne '"') {
-                    #                    if (is_single) {
-                        #
-                        #                    } else {
-                        #
-                        #                    }
-                    #                } else {
-                    #
-                    #                }
-                #            }
-            #        }
+            ## Remove quotes (first and last character).
+            #$quotation = substr($quotation, 1, -1);
+        }
+            say(@quotations);
+        return $content;
+    }
 
-
-
-
-        #        say("AAAAAAAAAA");
-        #        say(@quotations);
-        #        say("BBBBBBBBBB");
-        #
-        #    }
-
-
-
+    ## Obfuscate with different methods.
     $content = remove_comments_and_spacelikes($content);
     $content = obfuscate_variables($content);
     $content = randomize_case($content);
-    #x($content);
-    ############################################################################
-    print($content);
+    $content = encode($content);
+
+    ## Write output to file or STDOUT.
+    if (length($output) > 0) {
+        $content .= "\n";
+        path($output)->spew($content);
+    } else {
+        say($content);
+    }
 }
 
 
