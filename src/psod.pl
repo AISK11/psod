@@ -61,38 +61,54 @@ sub obfuscate($input, $output) {
         return $content;
     }
 
+
+    sub obfuscate_booleans($content) {
+        sub generate_true_bool() {
+            my $r1 = int(rand(1000000)) + 1;
+            my $r2 = int(rand(1000000)) + 1;
+            my $r3 = int(rand(1000000)) + 1;
+            my @rc1 = ('+', '*');
+            my @rc2 = ('+', '*');
+            return "[bool]($r1$rc1[rand(@rc1)]($r2$rc2[rand(@rc2)]$r3))";
+        }
+
+        sub generate_false_bool() {
+            my $r1 = int(rand(1000000)) + 1;
+            my $r2 = int(rand(1000000)) + 1;
+            my @rc = ('+', '-', '*', '/', '%' );
+            return "[bool](($r1$rc[rand(@rc)]$r2)*0)";
+        }
+
+        $content =~ s/\$true/generate_true_bool()/egi;   ## '$True' -> '[bool](1)'
+        $content =~ s/\$false/generate_false_bool()/egi; ## '$False -> '[bool](0)'
+        return $content;
+    }
+
     $content = remove_comments($content);
     $content = remove_spacelikes($content);
-
+    $content = obfuscate_booleans($content);
     ############################################################################
     print($content);
 }
 
 
-sub deobfuscate($input, $output) {
-    say('deobfuscating...');
-}
-
-
 sub help() {
     say('NAME');
-    say('    psod - PowerShell Obfuscator and Deobfuscator');
+    say('    psod - PowerShell Of Death');
     say('');
     say('SYNOPSIS');
-    say('    psod [-d] [-o FILE] -i FILE');
+    say('    psod [-h|-v]');
+    say('    psod [-o FILE] -i FILE');
     say('');
     say('DESCRIPTION');
-    say('    -d      = Deobfuscate data.');
-    say('    -h      = Show this help message and exit.');
-    say('    -i FILE = Set input file to read data from.');
-    say('    -o FILE = Put output to file instead of STDOUT.');
-    say('    -v      = Print application version and exit.');
+    say('    -h      = Help.');
+    say('    -i FILE = Input file.');
+    say('    -o FILE = Output file.');
+    say('    -v      = Version.');
     say('');
     say('EXAMPLES');
     say('    Obfuscate PowerShell script and save the output as obfuscated.ps1:');
     say('        $ psod -o obfuscated.ps1 -i deobfuscated.ps1');
-    say('    Deobfuscate PowerShell script and save the output as deobfuscated.ps1:');
-    say('        $ psod -d -o deobfuscated.ps1 -i obfuscated.ps1');
     say('');
     say('EXIT STATUS');
     say('    0 = success');
@@ -109,13 +125,11 @@ sub version() {
 
 sub main() {
     ## Command line options.
-    my $deobfuscate = '';
     my $help = '';
     my $input = '';
     my $output = '';
     my $version = '';
     GetOptions(
-        'd|deobfuscate!' => \$deobfuscate,
         'h|help!' => \$help,
         'i|input=s' => \$input,
         'o|output=s' => \$output,
@@ -127,8 +141,6 @@ sub main() {
         version();
     } elsif ($help || !$input) {
         help();
-    } elsif ($deobfuscate) {
-        deobfuscate($input, $output);
     } else {
         obfuscate($input, $output);
     }
