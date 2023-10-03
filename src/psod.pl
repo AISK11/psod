@@ -16,13 +16,17 @@ sub obfuscate($input, $output) {
     ## Read input file.
     my $content = path($input)->slurp;
 
-    sub remove_spacelikes($content) {
+    sub remove_comments_and_spacelikes($content) {
         ## Remove leading and trailing space-like characters.
         $content =~ s/^\s*//gm; ## ' ...' -> '...'
         $content =~ s/\s*$//gm; ## '... ' -> '...'
 
         ## Replace new lines with semicolons.
         $content =~ s/\n/;/g; ## '\n' -> ';'
+
+        ## Remove multi-line and single-line comments.
+        $content =~ s/<#.*?#>;//g; ## '<#...#>;' -> ''
+        $content =~ s/#.*?;//g;    ## '#...;'    -> ''
 
         ## Remove unnecessary semicolons.
         $content =~ s/{;/{/g; ## '{;' -> '{'
@@ -58,12 +62,6 @@ sub obfuscate($input, $output) {
         return $content;
     }
 
-    sub remove_comments($content) {
-        ## Remove multi-line and single-line comments.
-        $content =~ s/<#.*?#>;//g; ## '<#...#>;' -> ''
-        $content =~ s/#.*?;//g;    ## '#...;'    -> ''
-        return $content;
-    }
 
 
 
@@ -253,8 +251,7 @@ sub obfuscate($input, $output) {
 
 
 
-    $content = remove_spacelikes($content);
-    $content = remove_comments($content);
+    $content = remove_comments_and_spacelikes($content);
     #$content = obfuscate_booleans($content);
     #$content = obfuscate_variables($content);
     #$content = obfuscate_functions($content);
