@@ -221,27 +221,6 @@ sub obfuscate($input, $output) {
         return $encoded_content;
     }
 
-    sub concatenate_strings($content) {
-        ## Find all quotations ('.*' and ".*").
-        my @quotations = ();
-        while ($content =~ /(['"].*?['"])/g) {
-            push @quotations, $1;
-        }
-
-        foreach my $quotation (@quotations) {
-            ## Check if quotation is single-quoted or double-quoted.
-            my $is_single = 1;
-            if (substr($quotation, 0, 1) eq '"') {
-                $is_single = 0;
-            }
-
-            ## Remove quotes (first and last character).
-            #$quotation = substr($quotation, 1, -1);
-        }
-            say(@quotations);
-        return $content;
-    }
-
     ## Obfuscate with different methods.
     $content = remove_comments_and_spacelikes($content);
     $content = obfuscate_variables($content);
