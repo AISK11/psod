@@ -15,13 +15,11 @@ my $VERSION = 'v0.0.0';
 sub obfuscate($input, $output) {
     my $content = path($input)->slurp;
 
-
     sub remove_comments($content) {
         $content =~ s/<#.*?#>//gs; ## '<#...#>' -> ''
         $content =~ s/#.*\n//g;    ## '#...'    -> ''
         return $content;
     }
-
 
     sub remove_spacelikes($content) {
         ## Remove empty lines.
@@ -61,7 +59,6 @@ sub obfuscate($input, $output) {
         return $content;
     }
 
-
     sub obfuscate_booleans($content) {
         sub generate_true_bool() {
             my $r1 = int(rand(1000000)) + 1;
@@ -79,14 +76,79 @@ sub obfuscate($input, $output) {
             return "[bool](($r1$rc[rand(@rc)]$r2)*0)";
         }
 
-        $content =~ s/\$true/generate_true_bool()/egi;   ## '$True' -> '[bool](1)'
-        $content =~ s/\$false/generate_false_bool()/egi; ## '$False -> '[bool](0)'
+        $content =~ s/\$true/generate_true_bool()/egi;   ## '$True'  -> '[bool](1)'
+        $content =~ s/\$false/generate_false_bool()/egi; ## '$False' -> '[bool](0)'
+        return $content;
+    }
+
+    sub obfuscate_variables($content) {
+        sub generate_variable_name($length) {
+            my @chars = ('a' .. 'z', '0' .. '9');
+            my $string = '';
+            for (1 .. $length) {
+                my $char = $chars[rand(@chars)];
+                $string .= $char;
+            }
+            return '$' . $string;
+        }
+
+        ## Find all variables.
+        my @vars = ();
+        while ($content =~ /(\$[a-z0-9_]+)/gi) {
+            push @vars, $1;
+        }
+
+        ## Preserve only unique variables.
+        my %uniq_vars;
+        @vars = grep { !$uniq_vars{$_}++ } @vars;
+
+        ## Remove protected variables.
+        my @protected_vars = ('$_', '$null', '$script');
+        my %protected_vars_lookup = map { $_ => 1 } @protected_vars;
+        @vars = grep { !$protected_vars_lookup { $_ } } @vars;
+
+        ## Remove scope-modified variables.
+        my @script_vars = ();
+        while ($content =~ /(\$script:[a-z0-9_]+)/gi) {
+            my $script_var = $1;
+            $script_var =~ s/script://;
+            push @script_vars, $script_var;
+        }
+        my %script_vars_lookup = map { $_ => 1 } @script_vars;
+        @vars = grep { !$script_vars_lookup { $_ } } @vars;
+
+        ## Replace all variables with unique random string.
+        foreach my $var (@vars) {
+            ## Make sure that generated variable is unique and not already used.
+            while (1) {
+                my $mangled_var = generate_variable_name(32);
+                if (index($content, $mangled_var) == -1) {
+                    $content =~ s/\Q$var/$mangled_var/eg;
+                    last;
+                }
+            }
+        }
+
+        ## Also replace all scope-modified variables.
+        foreach my $var (@script_vars) {
+            $var =~ s/\$//;
+            ## Make sure that generated variable is unique and not already used.
+            while (1) {
+                my $mangled_var = generate_variable_name(32);
+                $mangled_var =~ s/\$//;
+                if (index($content, $mangled_var) == -1) {
+                    $content =~ s/\Q$var/$mangled_var/eg;
+                    last;
+                }
+            }
+        }
         return $content;
     }
 
     $content = remove_comments($content);
     $content = remove_spacelikes($content);
     $content = obfuscate_booleans($content);
+    $content = obfuscate_variables($content);
     ############################################################################
     print($content);
 }
