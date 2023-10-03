@@ -190,6 +190,8 @@ sub obfuscate($input, $output) {
                     $randomized_content .= lc($c);
                 } elsif ($c =~ /[a-z]/) {
                     $randomized_content .= uc($c);
+                } else {
+                    $randomized_content .= "$c";
                 }
             } else {
                 $randomized_content .= "$c";
