@@ -145,10 +145,65 @@ sub obfuscate($input, $output) {
         return $content;
     }
 
+    sub obfuscate_functions($content) {
+        sub generate_function_name($length) {
+            my @chars = ('a' .. 'z', '0' .. '9');
+            my $string = '';
+            for (1 .. $length) {
+                my $char = $chars[rand(@chars)];
+                $string .= $char;
+            }
+            return $string;
+        }
+
+        ## Find all functions.
+        my @functions = ();
+        while ($content =~ /(function.*?\()/gi) {
+            my $function = $1;
+            $function =~ s/function\s//;
+            $function =~ s/\(.*//;
+            push @functions, $function;
+        }
+
+        ## Replace all functions with unique random string.
+        foreach my $function (@functions) {
+            ## Make sure that generated function is unique and not already used.
+            while (1) {
+                my $mangled_function = generate_function_name(32);
+                if (index($content, $mangled_function) == -1) {
+                    $content =~ s/\Q$function/$mangled_function/eg;
+                    last;
+                }
+            }
+        }
+        return $content;
+    }
+
+    sub randomize_cases($content) {
+        my $randomized_content = '';
+
+        ## Loop through all characters.
+        for my $c (split //, $content) {
+            my $random = int(rand(2)) + 1;
+            if ($random % 2 == 0) {
+                if ($c =~ /[A-Z]/) {
+                    $randomized_content .= lc($c);
+                } elsif ($c =~ /[a-z]/) {
+                    $randomized_content .= uc($c);
+                }
+            } else {
+                $randomized_content .= "$c";
+            }
+        }
+        return $randomized_content;
+    }
+
     $content = remove_comments($content);
     $content = remove_spacelikes($content);
     $content = obfuscate_booleans($content);
     $content = obfuscate_variables($content);
+    $content = obfuscate_functions($content);
+    $content = randomize_cases($content);
     ############################################################################
     print($content);
 }
