@@ -13,18 +13,10 @@ my $VERSION = 'v0.0.0';
 
 
 sub obfuscate($input, $output) {
+    ## Read input file.
     my $content = path($input)->slurp;
 
-    sub remove_comments($content) {
-        $content =~ s/<#.*?#>//gs; ## '<#...#>' -> ''
-        $content =~ s/#.*\n//g;    ## '#...'    -> ''
-        return $content;
-    }
-
     sub remove_spacelikes($content) {
-        ## Remove empty lines.
-        $content =~ s/^\s*\n//gm; ## '^$' -> ''
-
         ## Remove leading and trailing space-like characters.
         $content =~ s/^\s*//gm; ## ' ...' -> '...'
         $content =~ s/\s*$//gm; ## '... ' -> '...'
@@ -32,32 +24,54 @@ sub obfuscate($input, $output) {
         ## Replace new lines with semicolons.
         $content =~ s/\n/;/g; ## '\n' -> ';'
 
-        ## Remove redundant space-like characters.
-        $content =~ s/\s+/ /g; ## '  ' -> ' '
-
         ## Remove unnecessary semicolons.
         $content =~ s/{;/{/g; ## '{;' -> '{'
         $content =~ s/;}/}/g; ## ';}' -> '}'
 
+        ## Remove redundant space-like characters.
+        $content =~ s/\s+/ /g; ## '  ' -> ' '
+
         ## Remove unnecessary space-like characters.
-        $content =~ s/\s=/=/g;   ## ' =' -> '='
-        $content =~ s/=\s/=/g;   ## '= ' -> '='
-        $content =~ s/\s\+/\+/g; ## ' +' -> '+'
-        $content =~ s/\+\s/\+/g; ## '+ ' -> '+'
-        $content =~ s/\s,/,/g;   ## ' ,' -> ','
-        $content =~ s/,\s/,/g;   ## ', ' -> ','
-        $content =~ s/\s\|/\|/g; ## ' |' -> '|'
-        $content =~ s/\|\s/\|/g; ## '| ' -> '|'
-        $content =~ s/\s\{/\{/g; ## ' {' -> '{'
-        $content =~ s/\{\s/\{/g; ## '{ ' -> '{'
-        $content =~ s/\s\}/\}/g; ## ' }' -> '}'
-        $content =~ s/\}\s/\}/g; ## '} ' -> '}'
-        $content =~ s/\s\(/\(/g; ## ' )' -> '('
-        $content =~ s/\(\s/\(/g; ## '( ' -> '('
-        $content =~ s/\s\)/\)/g; ## ' )' -> ')'
-        $content =~ s/\)\s/\)/g; ## ') ' -> ')'
+        $content =~ s/\s=/=/g;     ## ' ='  -> '='
+        $content =~ s/=\s/=/g;     ## '= '  -> '='
+        $content =~ s/\s\-\s/\-/g; ## ' - ' -> '-'
+        $content =~ s/\s\+/\+/g;   ## ' +'  -> '+'
+        $content =~ s/\+\s/\+/g;   ## '+ '  -> '+'
+        $content =~ s/\s\*/\*/g;   ## ' *'  -> '*'
+        $content =~ s/\*\s/\*/g;   ## '* '  -> '*'
+        $content =~ s/\s\//\//g;   ## ' /'  -> '/'
+        $content =~ s/\/\s/\//g;   ## '/ '  -> '/'
+        $content =~ s/\s\%/\%/g;   ## ' %'  -> '%'
+        $content =~ s/\%\s/\%/g;   ## '% '  -> '%'
+        $content =~ s/\s,/,/g;     ## ' ,'  -> ','
+        $content =~ s/,\s/,/g;     ## ', '  -> ','
+        $content =~ s/\s\|/\|/g;   ## ' |'  -> '|'
+        $content =~ s/\|\s/\|/g;   ## '| '  -> '|'
+        $content =~ s/\s\{/\{/g;   ## ' {'  -> '{'
+        $content =~ s/\{\s/\{/g;   ## '{ '  -> '{'
+        $content =~ s/\s\}/\}/g;   ## ' }'  -> '}'
+        $content =~ s/\}\s/\}/g;   ## '} '  -> '}'
+        $content =~ s/\s\(/\(/g;   ## ' )'  -> '('
+        $content =~ s/\(\s/\(/g;   ## '( '  -> '('
+        $content =~ s/\s\)/\)/g;   ## ' )'  -> ')'
+        $content =~ s/\)\s/\)/g;   ## ') '  -> ')'
         return $content;
     }
+
+    sub remove_comments($content) {
+        ## Remove multi-line and single-line comments.
+        $content =~ s/<#.*?#>;//g; ## '<#...#>;' -> ''
+        $content =~ s/#.*?;//g;    ## '#...;'    -> ''
+        return $content;
+    }
+
+
+
+
+
+
+
+
 
     sub obfuscate_booleans($content) {
         sub generate_true_bool() {
@@ -119,7 +133,6 @@ sub obfuscate($input, $output) {
 
         ## Replace all variables with unique random string.
         foreach my $var (@vars) {
-            ## Make sure that generated variable is unique and not already used.
             while (1) {
                 my $mangled_var = generate_variable_name(32);
                 if (index($content, $mangled_var) == -1) {
@@ -132,7 +145,6 @@ sub obfuscate($input, $output) {
         ## Also replace all scope-modified variables.
         foreach my $var (@script_vars) {
             $var =~ s/\$//;
-            ## Make sure that generated variable is unique and not already used.
             while (1) {
                 my $mangled_var = generate_variable_name(32);
                 $mangled_var =~ s/\$//;
@@ -167,7 +179,6 @@ sub obfuscate($input, $output) {
 
         ## Replace all functions with unique random string.
         foreach my $function (@functions) {
-            ## Make sure that generated function is unique and not already used.
             while (1) {
                 my $mangled_function = generate_function_name(32);
                 if (index($content, $mangled_function) == -1) {
@@ -181,8 +192,6 @@ sub obfuscate($input, $output) {
 
     sub randomize_cases($content) {
         my $randomized_content = '';
-
-        ## Loop through all characters.
         for my $c (split //, $content) {
             my $random = int(rand(2)) + 1;
             if ($random % 2 == 0) {
@@ -200,12 +209,57 @@ sub obfuscate($input, $output) {
         return $randomized_content;
     }
 
-    $content = remove_comments($content);
+
+
+
+
+    #sub x($content) {
+        ## Find all quotations ('.*' and ".*").
+        #my @quotations = ();
+        #while ($content =~ /(['"].*?['"])/g) {
+            #push @quotations, $1;
+            #}
+
+
+        #        foreach my $quotation (@quotations) {
+            #            if (substr($quotation, 0, 1) eq '"') {
+                #                $quotation =~ s/"//g;
+                #            } else {
+                #                $quotation =~ s/'//g;
+                #            }
+            #
+            #            my $new_quotation = '';
+            #            for my $c (split //, $quotation) {
+                #                if ($c ne '\'' && $c ne '"') {
+                    #                    if (is_single) {
+                        #
+                        #                    } else {
+                        #
+                        #                    }
+                    #                } else {
+                    #
+                    #                }
+                #            }
+            #        }
+
+
+
+
+        #        say("AAAAAAAAAA");
+        #        say(@quotations);
+        #        say("BBBBBBBBBB");
+        #
+        #    }
+
+
+
     $content = remove_spacelikes($content);
-    $content = obfuscate_booleans($content);
-    $content = obfuscate_variables($content);
-    $content = obfuscate_functions($content);
-    $content = randomize_cases($content);
+    $content = remove_comments($content);
+    #$content = obfuscate_booleans($content);
+    #$content = obfuscate_variables($content);
+    #$content = obfuscate_functions($content);
+    #$content = randomize_cases($content);
+    #x($content);
     ############################################################################
     print($content);
 }
@@ -255,7 +309,7 @@ sub main() {
         'v|version!' => \$version,
     );
 
-    ## Program control.
+    ## Program logic.
     if ($version && !$help) {
         version();
     } elsif ($help || !$input) {
