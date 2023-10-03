@@ -62,133 +62,132 @@ sub obfuscate($input, $output) {
         return $content;
     }
 
-
-
-
-
-
-
-
-
-
-    sub obfuscate_booleans($content) {
-        sub generate_true_bool() {
-            my $r1 = int(rand(1000000)) + 1;
-            my $r2 = int(rand(1000000)) + 1;
-            my $r3 = int(rand(1000000)) + 1;
-            my @rc1 = ('+', '*');
-            my @rc2 = ('+', '*');
-            return "[bool]($r1$rc1[rand(@rc1)]($r2$rc2[rand(@rc2)]$r3))";
-        }
-
-        sub generate_false_bool() {
-            my $r1 = int(rand(1000000)) + 1;
-            my $r2 = int(rand(1000000)) + 1;
-            my @rc = ('+', '-', '*', '/', '%' );
-            return "[bool](($r1$rc[rand(@rc)]$r2)*0)";
-        }
-
-        $content =~ s/\$true/generate_true_bool()/egi;   ## '$True'  -> '[bool](1)'
-        $content =~ s/\$false/generate_false_bool()/egi; ## '$False' -> '[bool](0)'
-        return $content;
-    }
-
     sub obfuscate_variables($content) {
-        sub generate_variable_name($length) {
-            my @chars = ('a' .. 'z', '0' .. '9');
-            my $string = '';
-            for (1 .. $length) {
-                my $char = $chars[rand(@chars)];
-                $string .= $char;
+        sub booleans($content) {
+            sub generate_true_bool() {
+                my $r1 = int(rand(1000000)) + 1;
+                my $r2 = int(rand(1000000)) + 1;
+                my $r3 = int(rand(1000000)) + 1;
+                my @rc1 = ('+', '*', '/');
+                my @rc2 = ('+', '*', '/');
+                return "[bool]($r1$rc1[rand(@rc1)]($r2$rc2[rand(@rc2)]$r3))";
             }
-            return '$' . $string;
+
+            sub generate_false_bool() {
+                my $r1 = int(rand(1000000)) + 1;
+                my $r2 = int(rand(1000000)) + 1;
+                my @rc = ('+', '-', '*', '/', '%' );
+                return "[bool](($r1$rc[rand(@rc)]$r2)*0)";
+            }
+
+            ## Replace '$True' and '$False' booleans with mathematical equations.
+            $content =~ s/\$true/generate_true_bool()/egi;   ## '$True'  -> '[bool](1)'
+            $content =~ s/\$false/generate_false_bool()/egi; ## '$False' -> '[bool](0)'
+            return $content;
         }
 
-        ## Find all variables.
-        my @vars = ();
-        while ($content =~ /(\$[a-z0-9_]+)/gi) {
-            push @vars, $1;
-        }
+        sub variables($content) {
+            sub generate_variable_name($length) {
+                my @chars = ('a' .. 'z', '0' .. '9');
+                my $string = '';
+                for (1 .. $length) {
+                    my $char = $chars[rand(@chars)];
+                    $string .= $char;
+                }
+                return '$' . $string;
+            }
 
-        ## Preserve only unique variables.
-        my %uniq_vars;
-        @vars = grep { !$uniq_vars{$_}++ } @vars;
+            ## Find all variables.
+            my @vars = ();
+            while ($content =~ /(\$[a-z0-9_]+)/gi) {
+                push @vars, $1;
+            }
 
-        ## Remove protected variables.
-        my @protected_vars = ('$_', '$null', '$script');
-        my %protected_vars_lookup = map { $_ => 1 } @protected_vars;
-        @vars = grep { !$protected_vars_lookup { $_ } } @vars;
+            ## Preserve only unique variables.
+            my %uniq_vars;
+            @vars = grep { !$uniq_vars{$_}++ } @vars;
 
-        ## Remove scope-modified variables.
-        my @script_vars = ();
-        while ($content =~ /(\$script:[a-z0-9_]+)/gi) {
-            my $script_var = $1;
-            $script_var =~ s/script://;
-            push @script_vars, $script_var;
-        }
-        my %script_vars_lookup = map { $_ => 1 } @script_vars;
-        @vars = grep { !$script_vars_lookup { $_ } } @vars;
+            ## Remove protected variables.
+            my @protected_vars = ('$_', '$null', '$env', '$script');
+            my %protected_vars_lookup = map { $_ => 1 } @protected_vars;
+            @vars = grep { !$protected_vars_lookup { $_ } } @vars;
 
-        ## Replace all variables with unique random string.
-        foreach my $var (@vars) {
-            while (1) {
-                my $mangled_var = generate_variable_name(32);
-                if (index($content, $mangled_var) == -1) {
-                    $content =~ s/\Q$var/$mangled_var/eg;
-                    last;
+            ## Remove scope-modified variables.
+            my @script_vars = ();
+            while ($content =~ /(\$script:[a-z0-9_]+)/gi) {
+                my $script_var = $1;
+                $script_var =~ s/script://;
+                push @script_vars, $script_var;
+            }
+            my %script_vars_lookup = map { $_ => 1 } @script_vars;
+            @vars = grep { !$script_vars_lookup { $_ } } @vars;
+
+            ## Replace all variables with unique random string.
+            foreach my $var (@vars) {
+                while (1) {
+                    my $mangled_var = generate_variable_name(32);
+                    if (index($content, $mangled_var) == -1) {
+                        $content =~ s/\Q$var/$mangled_var/eg;
+                        last;
+                    }
                 }
             }
-        }
 
-        ## Also replace all scope-modified variables.
-        foreach my $var (@script_vars) {
-            $var =~ s/\$//;
-            while (1) {
-                my $mangled_var = generate_variable_name(32);
-                $mangled_var =~ s/\$//;
-                if (index($content, $mangled_var) == -1) {
-                    $content =~ s/\Q$var/$mangled_var/eg;
-                    last;
+            ## Also replace all scope-modified variables.
+            foreach my $var (@script_vars) {
+                $var =~ s/\$//;
+                while (1) {
+                    my $mangled_var = generate_variable_name(32);
+                    $mangled_var =~ s/\$//;
+                    if (index($content, $mangled_var) == -1) {
+                        $content =~ s/\Q$var/$mangled_var/eg;
+                        last;
+                    }
                 }
             }
+            return $content;
         }
+
+        sub functions($content) {
+            sub generate_function_name($length) {
+                my @chars = ('a' .. 'z', '0' .. '9');
+                my $string = '';
+                for (1 .. $length) {
+                    my $char = $chars[rand(@chars)];
+                    $string .= $char;
+                }
+                return $string;
+            }
+
+            ## Find all functions.
+            my @functions = ();
+            while ($content =~ /(function.*?\()/gi) {
+                my $function = $1;
+                $function =~ s/function\s//;
+                $function =~ s/\(.*//;
+                push @functions, $function;
+            }
+
+            ## Replace all functions with unique random string.
+            foreach my $function (@functions) {
+                while (1) {
+                    my $mangled_function = generate_function_name(32);
+                    if (index($content, $mangled_function) == -1) {
+                        $content =~ s/\Q$function/$mangled_function/eg;
+                        last;
+                    }
+                }
+            }
+            return $content;
+        }
+
+        $content = booleans($content);
+        $content = variables($content);
+        $content = functions($content);
         return $content;
     }
 
-    sub obfuscate_functions($content) {
-        sub generate_function_name($length) {
-            my @chars = ('a' .. 'z', '0' .. '9');
-            my $string = '';
-            for (1 .. $length) {
-                my $char = $chars[rand(@chars)];
-                $string .= $char;
-            }
-            return $string;
-        }
-
-        ## Find all functions.
-        my @functions = ();
-        while ($content =~ /(function.*?\()/gi) {
-            my $function = $1;
-            $function =~ s/function\s//;
-            $function =~ s/\(.*//;
-            push @functions, $function;
-        }
-
-        ## Replace all functions with unique random string.
-        foreach my $function (@functions) {
-            while (1) {
-                my $mangled_function = generate_function_name(32);
-                if (index($content, $mangled_function) == -1) {
-                    $content =~ s/\Q$function/$mangled_function/eg;
-                    last;
-                }
-            }
-        }
-        return $content;
-    }
-
-    sub randomize_cases($content) {
+    sub randomize_case($content) {
         my $randomized_content = '';
         for my $c (split //, $content) {
             my $random = int(rand(2)) + 1;
@@ -252,10 +251,8 @@ sub obfuscate($input, $output) {
 
 
     $content = remove_comments_and_spacelikes($content);
-    #$content = obfuscate_booleans($content);
-    #$content = obfuscate_variables($content);
-    #$content = obfuscate_functions($content);
-    #$content = randomize_cases($content);
+    $content = obfuscate_variables($content);
+    $content = randomize_case($content);
     #x($content);
     ############################################################################
     print($content);
